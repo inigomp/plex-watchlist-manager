@@ -352,6 +352,7 @@
                 <div class="chips" id="status-chips">
                     <div class="chip active" data-value="all">Todos</div>
                     <div class="chip" data-value="online">En Servidor</div>
+                    <div class="chip" data-value="recent">Añadidos esta semana</div>
                     <div class="chip" data-value="offline">Faltan</div>
                 </div>
             </div>
@@ -437,6 +438,10 @@
             // Filtrar
             if (currentFilters.status === 'online') filtered = filtered.filter(i => i.on_server);
             if (currentFilters.status === 'offline') filtered = filtered.filter(i => !i.on_server);
+            if (currentFilters.status === 'recent') {
+                const oneWeekAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
+                filtered = filtered.filter(i => i.on_server && i.added_at >= oneWeekAgo);
+            }
             if (currentFilters.type !== 'all') filtered = filtered.filter(i => i.type === currentFilters.type);
 
             // Ordenar
@@ -460,12 +465,16 @@
                 <div class="grid">
                     ${filtered.map(item => {
                 const hasScore = item.score && item.score !== 'N/A' && item.score !== '0';
+                const oneWeekAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
+                const isRecent = item.on_server && item.added_at >= oneWeekAgo;
+
                 return `
                         <div class="card">
                             <span class="type-badge">${item.type}</span>
                             <span class="status-badge ${item.on_server ? 'status-online' : 'status-offline'}">
                                 ${item.on_server ? 'EN SERVIDOR' : 'FALTA'}
                             </span>
+                            ${isRecent ? '<span class="status-badge" style="top:50px; background:var(--primary); color:#000; font-size:0.6rem">NUEVO</span>' : ''}
                             <div class="poster-container">
                                 <img class="poster" src="${item.image || 'https://via.placeholder.com/300x450?text=Sin+Poster'}" alt="${item.title}" loading="lazy">
                                 ${hasScore ? `

@@ -49,7 +49,8 @@ def sync_watchlist():
                     server_items.append({
                         "title": item.get("title", "").lower(),
                         "orig": item.get("originalTitle", "").lower(),
-                        "lib": lib["title"]
+                        "lib": lib["title"],
+                        "added_at": int(item.get("addedAt", 0))
                     })
 
         # 3. Procesar y Cruzar
@@ -70,9 +71,11 @@ def sync_watchlist():
             # Verificar disponibilidad
             on_server = False
             found_in_libs = []
+            added_at = 0
             for s_item in server_items:
                 if s_item["title"] in keys or (s_item["orig"] and s_item["orig"] in keys):
                     on_server = True
+                    added_at = s_item["added_at"]
                     if s_item["lib"] not in found_in_libs:
                         found_in_libs.append(s_item["lib"])
             
@@ -99,7 +102,8 @@ def sync_watchlist():
                 "url": f"https://www.filmaffinity.com/es/search.php?stext={title.replace(' ', '+')}",
                 "on_server": on_server,
                 "libraries": found_in_libs,
-                "score": tmdb_score
+                "score": tmdb_score,
+                "added_at": added_at
             })
 
         # 4. Guardar en MongoDB (Update or Insert)
