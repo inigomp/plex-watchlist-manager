@@ -1,31 +1,40 @@
-# Plex Watchlist Manager 🎬
+# Plex Watchlist Manager (Cloud Edition) ✨
 
-Este proyecto permite gestionar y comparar tu **Plex Watchlist** universal con el contenido disponible en tu servidor **Plex** (específicamente el servidor de nombre 'Navidad').
+Sistema de gestión y visualización de tu Plex Watchlist con base de datos en la nube y sincronización automática.
 
-## Características Actuales (CLI)
-- **Sincronización de Watchlist**: Obtiene todos los elementos de tu lista de seguimiento (manejando paginación).
-- **Match Inteligente**: Compara títulos y títulos originales para encontrar coincidencias incluso si los nombres varían entre idiomas.
-- **Escaneo Multi-Librería**: Busca en todas las secciones del servidor para indicarte exactamente dónde está cada película o serie.
-- **Scraper de FilmAffinity**: Capacidad modular para obtener puntuaciones y reseñas.
+## 🚀 Características
+- **Base de Datos Cloud**: Usa MongoDB Atlas para un acceso rápido y persistente.
+- **Sincronización Automática**: El servidor refresca los datos de Plex cada hora de forma autónoma.
+- **Interfaz Web Premium**: Panel visual con pósters, badges de disponibilidad y links a FilmAffinity.
+- **Despliegue Gratuito**: Preparado para funcionar en Render/Railway.
 
-## Próximos Pasos (Hoja de Ruta)
-- [ ] **Backend API**: Servidor en Python (FastAPI/Flask) para servir los datos en formato JSON.
-- [ ] **Web Frontend**: Interfaz moderna (React/Vite) con:
-    - Tabla interactiva con filtros.
-    - Ordenación por **Nota en FilmAffinity**, Año y Tipo.
-    - Visualización de posters y sinopsis.
-    - Indicador visual de disponibilidad.
+## 🛠️ Configuración Cloud
 
-## Instalación
-1. Clona el repositorio.
-2. Instala las dependencias:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Ejecuta el script principal:
-   ```bash
-   python main.py
-   ```
+### 1. Base de Datos (MongoDB Atlas)
+1. Crea un clúster gratuito en [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
+2. Crea un usuario y obtén tu cadena de conexión (Connection String).
+3. Añade la URI a tus variables de entorno como `MONGO_URI`.
+
+### 2. Variables de Entorno
+Necesitas configurar las siguientes variables en tu host cloud (Render/Railway):
+- `PLEX_TOKEN`: Tu token de Plex Discover.
+- `SERVER_NAME`: El nombre de tu servidor Plex (ej. "Navidad").
+- `MONGO_URI`: Tu conexión a MongoDB Atlas.
+- `PORT`: 5000 (por defecto).
+
+### 3. Despliegue en Render
+1. Conecta este repositorio a [Render](https://render.com/).
+2. Crea un "Web Service".
+3. Usa la configuración:
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn app:app`
+4. Añade las variables de entorno en la sección "Environment".
+
+## 🖥️ Uso Local
+1. Instala dependencias: `pip install -r requirements.txt`
+2. Crea un archivo `.env` con tus credenciales.
+3. Ejecuta: `python app.py`
+4. Abre `http://localhost:5000`
 
 ---
 *Hecho con ❤️ para organizar tu cine.*

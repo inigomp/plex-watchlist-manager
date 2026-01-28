@@ -1,12 +1,17 @@
 import os
 import json
+import logging
 from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
+from pymongo import MongoClient
+from apscheduler.schedulers.background import BackgroundScheduler
 from plex_api import PlexAPI
-from fa_scraper import FAScraper
 
-# Cargar variables de entorno
+# Configuración de logs
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -15,64 +20,104 @@ CORS(app)
 # --- Configuración ---
 PLEX_TOKEN = os.getenv("PLEX_TOKEN")
 SERVER_NAME = os.getenv("SERVER_NAME", "Navidad")
-# ---------------------
+MONGO_URI = os.getenv("MONGO_URI") # URI de MongoDB Atlas
+
+# Conexión a MongoDB
+client = MongoClient(MONGO_URI)
+db = client['plex_manager']
+collection = db['watchlist']
+
+def sync_watchlist():
+    """Tarea en segundo plano que sincroniza Plex con MongoDB."""
+    logger.info("Iniciando sincronización con Plex...")
+    try:
+        plex = PlexAPI(PLEX_TOKEN)
+        
+        # 1. Obtener Watchlist de Plex
+        watchlist_raw = plex.get_watchlist()
+        watchlist_final = []
+        
+        # 2. Obtener librerías del servidor para cruce
+        libraries = plex.get_server_libraries(SERVER_NAME)
+        server_items = []
+        if libraries:
+            for lib in libraries:
+                lib_items = plex.get_library_items(lib)
+                for item in lib_items:
+                    server_items.append({
+                        "title": item.get("title", "").lower(),
+                        "orig": item.get("originalTitle", "").lower(),
+                        "lib": lib["title"]
+                    })
+
+        # 3. Procesar y Cruzar
+        for item in watchlist_raw:
+            title = item.get("title")
+            orig = item.get("originalTitle")
+            year = item.get("year")
+            type_ = "Película" if item.get("type") == "movie" else "Serie"
+            thumb = item.get("thumb")
+            
+            image_url = thumb if thumb and thumb.startswith('http') else None
+            if not image_url and thumb:
+                image_url = f"https://metadata.provider.plex.tv{thumb}?X-Plex-Token={PLEX_TOKEN}"
+            
+            keys = {title.lower()}
+            if orig: keys.add(orig.lower())
+            
+            # Verificar disponibilidad
+            on_server = False
+            found_in_libs = []
+            for s_item in server_items:
+                if s_item["title"] in keys or (s_item["orig"] and s_item["orig"] in keys):
+                    on_server = True
+                    if s_item["lib"] not in found_in_libs:
+                        found_in_libs.append(s_item["lib"])
+            
+            watchlist_final.append({
+                "plex_id": item.get("ratingKey"),
+                "title": title,
+                "orig": orig,
+                "year": year,
+                "type": type_,
+                "image": image_url,
+                "url": f"https://www.filmaffinity.com/es/search.php?stext={title.replace(' ', '+')}",
+                "on_server": on_server,
+                "libraries": found_in_libs
+            })
+
+        # 4. Guardar en MongoDB (Update or Insert)
+        if watchlist_final:
+            # Opción simple: Limpiar y reinsertar (para mantener sincronía total)
+            collection.delete_many({})
+            collection.insert_many(watchlist_final)
+            logger.info(f"Sincronización completada: {len(watchlist_final)} elementos.")
+        
+    except Exception as e:
+        logger.error(f"Error en sincronización: {e}")
+
+# Configurar el planificador (cada hora)
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=sync_watchlist, trigger="interval", hours=1)
+scheduler.start()
+
+@app.route('/')
+def index():
+    return app.send_static_file('index.html')
 
 @app.route('/api/watchlist', methods=['GET'])
-def get_watchlist_data():
-    plex = PlexAPI(PLEX_TOKEN)
-    
-    # 1. Obtener Watchlist
-    watchlist_raw = plex.get_watchlist()
-    watchlist = [] 
-    
-    # En el backend de la web, por ahora no usaremos el scraper en cada petición 
-    # para evitar bloqueos y lentitud. Devolveremos el enlace de búsqueda.
-    for item in watchlist_raw:
-        title = item.get("title")
-        orig = item.get("originalTitle")
-        year = item.get("year")
-        type_ = "Película" if item.get("type") == "movie" else "Serie"
-        thumb = item.get("thumb")
-        
-        # Las imágenes de Discover suelen ser URLs completas ahora
-        if thumb and thumb.startswith('http'):
-            image_url = thumb
-        elif thumb:
-            image_url = f"https://metadata.provider.plex.tv{thumb}?X-Plex-Token={PLEX_TOKEN}"
-        else:
-            image_url = None
-        
-        keys = {title.lower()}
-        if orig: keys.add(orig.lower())
-        
-        watchlist.append({
-            "title": title,
-            "orig": orig,
-            "year": year,
-            "type": type_,
-            "keys": list(keys),
-            "image": image_url,
-            "url": f"https://www.filmaffinity.com/es/search.php?stext={title.replace(' ', '+')}",
-            "on_server": False,
-            "libraries": []
-        })
+def get_watchlist():
+    # Lee directamente de la base de datos (instantáneo)
+    data = list(collection.find({}, {'_id': 0}))
+    return jsonify(data)
 
-    # 2. Buscar en el Servidor
-    libraries = plex.get_server_libraries(SERVER_NAME)
-    if libraries:
-        for lib in libraries:
-            items = plex.get_library_items(lib)
-            for srv_item in items:
-                srv_title = srv_item.get("title", "").lower()
-                srv_orig = srv_item.get("originalTitle", "").lower()
-                
-                for meta in watchlist:
-                    if srv_title in meta["keys"] or (srv_orig and srv_orig in meta["keys"]):
-                        meta["on_server"] = True
-                        if lib["title"] not in meta["libraries"]:
-                            meta["libraries"].append(lib["title"])
-
-    return jsonify(watchlist)
+@app.route('/api/sync', methods=['POST'])
+def force_sync():
+    # Permite forzar la sincronización desde la web
+    sync_watchlist()
+    return jsonify({"status": "sync_started"})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Ejecutar sincronización inicial al arrancar
+    # sync_watchlist() 
+    app.run(debug=True, port=int(os.getenv("PORT", 5000)))

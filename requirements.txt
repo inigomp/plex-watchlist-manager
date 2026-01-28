@@ -4,3 +4,6 @@ playwright
 flask
 flask-cors
 python-dotenv
+pymongo[srv]
+apscheduler
+gunicorn
