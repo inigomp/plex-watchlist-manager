@@ -2,6 +2,7 @@ import os
 import threading
 import urllib.parse
 import logging
+import requests
 from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
