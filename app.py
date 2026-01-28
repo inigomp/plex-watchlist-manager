@@ -10,6 +10,9 @@ from pymongo import MongoClient
 from apscheduler.schedulers.background import BackgroundScheduler
 from plex_api import PlexAPI
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 # Configuración de logs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,6 +21,8 @@ load_dotenv()
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)
+
+PORT = int(os.getenv("PORT", 5000))
 
 # --- Configuración ---
 PLEX_TOKEN = os.getenv("PLEX_TOKEN")
@@ -203,6 +208,4 @@ def force_sync():
     })
 
 if __name__ == '__main__':
-    # Ejecutar sincronización inicial al arrancar
-    # sync_watchlist() 
-    app.run(debug=True, port=int(os.getenv("PORT", 5000)))
+    app.run(host='0.0.0.0', port=PORT)
