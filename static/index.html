@@ -224,6 +224,34 @@
             <p style="color: var(--text-dim)">Gestiona tu lista de seguimiento y disponibilidad local</p>
         </header>
 
+        <div class="filters">
+            <div class="filter-group">
+                <label>Disponibilidad</label>
+                <select id="filter-status" onchange="renderGrid()">
+                    <option value="all">Todos</option>
+                    <option value="online">En Servidor</option>
+                    <option value="offline">Faltan</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Tipo</label>
+                <select id="filter-type" onchange="renderGrid()">
+                    <option value="all">Cualquier tipo</option>
+                    <option value="Película">Películas</option>
+                    <option value="Serie">Series</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Ordenar por</label>
+                <select id="sort-order" onchange="renderGrid()">
+                    <option value="newest">Año (Reciente)</option>
+                    <option value="oldest">Año (Antiguo)</option>
+                    <option value="rating">Nota TMDB</option>
+                    <option value="title">Título A-Z</option>
+                </select>
+            </div>
+        </div>
+
         <div id="app">
             <div class="loader">
                 <div class="spinner"></div>
@@ -233,54 +261,83 @@
     </div>
 
     <script>
+        let fullData = [];
+
         async function loadWatchlist() {
             const appDiv = document.getElementById('app');
             try {
-                // Usamos ruta relativa para que funcione tanto en local como en la nube
                 const response = await fetch('/api/watchlist');
-                const data = await response.json();
-
-                const statsHtml = `
-                    <div class="stats">
-                        <div class="stat-badge">Total: ${data.length}</div>
-                        <div class="stat-badge">Disponible: ${data.filter(i => i.on_server).length}</div>
-                        <div class="stat-badge">Pendiente: ${data.filter(i => !i.on_server).length}</div>
-                        <button onclick="forceSync()" class="stat-badge" style="cursor:pointer; background: var(--primary); color: #000; border:none; font-weight:600;">🔄 Sincronizar Ahora</button>
-                    </div>
-                `;
-
-                const gridHtml = `
-                    <div class="grid">
-                        ${data.map(item => `
-                            <div class="card">
-                                <span class="type-badge">${item.type}</span>
-                                <span class="status-badge ${item.on_server ? 'status-online' : 'status-offline'}">
-                                    ${item.on_server ? 'EN SERVIDOR' : 'FALTA'}
-                                </span>
-                                <div class="poster-container">
-                                    <img class="poster" src="${item.image || 'https://via.placeholder.com/300x450?text=No+Poster'}" alt="${item.title}" loading="lazy">
-                                </div>
-                                <div class="content">
-                                    <div class="title" title="${item.title}">${item.title}</div>
-                                    <div class="orig-title">${item.orig || item.title}</div>
-                                    <div class="meta">
-                                        <span class="year">${item.year}</span>
-                                        <a href="${item.url}" target="_blank" class="fa-link">FilmAffinity</a>
-                                    </div>
-                                    <div style="font-size: 0.7rem; color: var(--text-dim)">
-                                        ${item.on_server ? '📍 ' + item.libraries.join(', ') : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-
-                appDiv.innerHTML = statsHtml + gridHtml;
+                fullData = await response.json();
+                renderGrid();
             } catch (error) {
                 console.error(error);
                 appDiv.innerHTML = '<div class="error-msg">⚠️ No se pudo conectar con el servidor backend. Asegúrate de que app.py esté ejecutándose.</div>';
             }
+        }
+
+        function renderGrid() {
+            const appDiv = document.getElementById('app');
+            const filterStatus = document.getElementById('filter-status').value;
+            const filterType = document.getElementById('filter-type').value;
+            const sortOrder = document.getElementById('sort-order').value;
+
+            let filtered = [...fullData];
+
+            // Filtrar
+            if (filterStatus === 'online') filtered = filtered.filter(i => i.on_server);
+            if (filterStatus === 'offline') filtered = filtered.filter(i => !i.on_server);
+            if (filterType !== 'all') filtered = filtered.filter(i => i.type === filterType);
+
+            // Ordenar
+            filtered.sort((a, b) => {
+                if (sortOrder === 'newest') return (b.year || 0) - (a.year || 0);
+                if (sortOrder === 'oldest') return (a.year || 0) - (b.year || 0);
+                if (sortOrder === 'rating') return (parseFloat(b.score) || 0) - (parseFloat(a.score) || 0);
+                if (sortOrder === 'title') return a.title.localeCompare(b.title);
+                return 0;
+            });
+
+            const statsHtml = `
+                <div class="stats">
+                    <div class="stat-badge">Total: ${filtered.length}</div>
+                    <div class="stat-badge">En Servidor: ${filtered.filter(i => i.on_server).length}</div>
+                    <button onclick="forceSync()" class="stat-badge" style="cursor:pointer; background: var(--primary); color: #000; border:none; font-weight:600;">🔄 Sincronizar</button>
+                </div>
+            `;
+
+            const gridHtml = `
+                <div class="grid">
+                    ${filtered.map(item => `
+                        <div class="card">
+                            <span class="type-badge">${item.type}</span>
+                            <span class="status-badge ${item.on_server ? 'status-online' : 'status-offline'}">
+                                ${item.on_server ? 'EN SERVIDOR' : 'FALTA'}
+                            </span>
+                            <div class="poster-container">
+                                <img class="poster" src="${item.image || 'https://via.placeholder.com/300x450?text=No+Poster'}" alt="${item.title}" loading="lazy">
+                                ${item.score && item.score !== 'N/A' ? `
+                                    <div class="tmdb-badge">
+                                        <span style="color:#01b4e4">★</span> ${item.score}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="content">
+                                <div class="title" title="${item.title}">${item.title}</div>
+                                <div class="orig-title">${item.orig || item.title}</div>
+                                <div class="meta">
+                                    <span class="year" style="background:#2d2e33; padding:2px 8px; border-radius:5px; font-size:0.8rem">${item.year}</span>
+                                    <a href="${item.url}" target="_blank" class="fa-link">FilmAffinity</a>
+                                </div>
+                                <div style="font-size: 0.7rem; color: var(--text-dim); min-height:1rem">
+                                    ${item.on_server ? '📍 ' + item.libraries.join(', ') : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            appDiv.innerHTML = statsHtml + gridHtml;
         }
 
         async function forceSync() {

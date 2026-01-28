@@ -1,6 +1,5 @@
-import os
-import json
-import logging
+import threading
+import urllib.parse
 from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -21,6 +20,7 @@ CORS(app)
 PLEX_TOKEN = os.getenv("PLEX_TOKEN")
 SERVER_NAME = os.getenv("SERVER_NAME", "Navidad")
 MONGO_URI = os.getenv("MONGO_URI") # URI de MongoDB Atlas
+TMDB_API_KEY = os.getenv("TMDB_API_KEY") # API Key de TMDB
 
 # Conexión a MongoDB
 client = MongoClient(MONGO_URI)
@@ -74,6 +74,19 @@ def sync_watchlist():
                     if s_item["lib"] not in found_in_libs:
                         found_in_libs.append(s_item["lib"])
             
+            # 4. Obtener nota de TMDB (Opcional si hay API Key)
+            tmdb_score = "N/A"
+            if TMDB_API_KEY:
+                try:
+                    search_type = "movie" if item.get("type") == "movie" else "tv"
+                    tmdb_url = f"https://api.themoviedb.org/3/search/{search_type}?api_key={TMDB_API_KEY}&query={urllib.parse.quote(title or orig)}&year={year}"
+                    import requests
+                    tmdb_res = requests.get(tmdb_url, timeout=5).json()
+                    if tmdb_res.get("results"):
+                        tmdb_score = str(round(tmdb_res["results"][0].get("vote_average", 0), 1))
+                except Exception as e:
+                    logger.error(f"Error buscando en TMDB para {title}: {e}")
+
             watchlist_final.append({
                 "plex_id": item.get("ratingKey"),
                 "title": title,
@@ -83,7 +96,8 @@ def sync_watchlist():
                 "image": image_url,
                 "url": f"https://www.filmaffinity.com/es/search.php?stext={title.replace(' ', '+')}",
                 "on_server": on_server,
-                "libraries": found_in_libs
+                "libraries": found_in_libs,
+                "score": tmdb_score
             })
 
         # 4. Guardar en MongoDB (Update or Insert)
