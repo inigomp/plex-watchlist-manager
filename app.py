@@ -114,19 +114,29 @@ def sync_watchlist():
             tmdb_score = "N/A"
             if TMDB_API_KEY:
                 try:
-                    search_type = "movie" if item.get("type") == "movie" else "tv"
-                    tmdb_url = f"https://api.themoviedb.org/3/search/{search_type}?api_key={TMDB_API_KEY}&query={urllib.parse.quote(title or orig)}&year={year}"
                     import requests
+                    search_type = "movie" if item.get("type") == "movie" else "tv"
+                    # Priorizamos búsqueda por título original para mejor match en TMDB
+                    query = orig if orig else title
+                    tmdb_url = f"https://api.themoviedb.org/3/search/{search_type}?api_key={TMDB_API_KEY}&query={urllib.parse.quote(query)}&year={year}"
                     tmdb_res = requests.get(tmdb_url, timeout=5).json()
+                    
+                    # Si no hay resultados con el original, probamos con el traducido
+                    if not tmdb_res.get("results") and orig:
+                        tmdb_url = f"https://api.themoviedb.org/3/search/{search_type}?api_key={TMDB_API_KEY}&query={urllib.parse.quote(title)}&year={year}"
+                        tmdb_res = requests.get(tmdb_url, timeout=5).json()
+
                     if tmdb_res.get("results"):
                         tmdb_score = str(round(tmdb_res["results"][0].get("vote_average", 0), 1))
                 except Exception as e:
                     logger.error(f"Error buscando en TMDB para {title}: {e}")
+            else:
+                logger.warning("TMDB_API_KEY no configurada. Las notas aparecerán como N/A.")
 
             new_item = {
                 "plex_id": plex_id,
-                "title": title,
-                "orig": orig,
+                "title": title, # Ahora será en español gracias a X-Plex-Language
+                "orig": orig,   # Título original (normalmente inglés)
                 "year": year,
                 "type": type_,
                 "image": image_url,

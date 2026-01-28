@@ -4,7 +4,10 @@ import xml.etree.ElementTree as ET
 class PlexAPI:
     def __init__(self, token):
         self.token = token
-        self.headers = {"Accept": "application/json"}
+        self.headers = {
+            "Accept": "application/json",
+            "X-Plex-Language": "es"
+        }
 
     def get_watchlist(self):
         """Fetches all items from the Plex Universal Watchlist with pagination."""
