@@ -111,7 +111,7 @@ def get_watchlist():
     data = list(collection.find({}, {'_id': 0}))
     return jsonify(data)
 
-@app.route('/api/sync', methods=['POST'])
+@app.route('/api/sync', methods=['GET', 'POST'])
 def force_sync():
     # Permite forzar la sincronización desde la web
     sync_watchlist()
