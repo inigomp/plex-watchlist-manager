@@ -36,6 +36,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 client = MongoClient(MONGO_URI)
 db = client['plex_manager']
 collection = db['watchlist']
+status_collection = db['sync_status'] # Nueva colección para el estado del servidor
 
 def send_telegram_notification(item):
     """Envía un mensaje a Telegram avisando de que hay contenido nuevo disponible."""
@@ -181,10 +182,22 @@ def sync_watchlist():
         if watchlist_final:
             collection.delete_many({})
             collection.insert_many(watchlist_final)
+            # Guardar estado de éxito
+            status_collection.update_one(
+                {"id": "last_sync"},
+                {"$set": {"status": "success", "timestamp": int(time.time()), "server": SERVER_NAME}},
+                upsert=True
+            )
             logger.info(f"Sincronización finalizada. Guardados {len(watchlist_final)} elementos.")
         
     except Exception as e:
         logger.error(f"Error general en el proceso de sincronización: {e}")
+        # Guardar estado de error
+        status_collection.update_one(
+            {"id": "last_sync"},
+            {"$set": {"status": "error", "error": str(e), "timestamp": int(time.time()), "server": SERVER_NAME}},
+            upsert=True
+        )
         if watchlist_final:
             # Opción simple: Limpiar y reinsertar (para mantener sincronía total)
             collection.delete_many({})
@@ -202,6 +215,11 @@ scheduler.start()
 @app.route('/')
 def index():
     return app.send_static_file('index.html')
+
+@app.route('/api/status', methods=['GET'])
+def get_status():
+    status = status_collection.find_one({"id": "last_sync"}, {'_id': 0})
+    return jsonify(status or {"status": "unknown"})
 
 @app.route('/api/watchlist', methods=['GET'])
 def get_watchlist():

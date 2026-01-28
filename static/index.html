@@ -377,6 +377,14 @@
             </div>
         </div>
 
+        <div id="status-warning" style="display:none; margin-bottom:20px;">
+            <div class="error-msg"
+                style="background:rgba(255,193,7,0.1); border-color:#ffc107; color:#ffc107; padding:15px; text-align:left;">
+                ⚠️ <b>Conexión fallida con el servidor Plex:</b> El sistema no ha podido conectar con tu servidor local
+                (Posible timeout). Los elementos se muestran como "FALTA" hasta que la conexión se restablezca.
+            </div>
+        </div>
+
         <div id="app">
             <div class="loader">
                 <div class="spinner"></div>
@@ -414,7 +422,21 @@
             });
         });
 
+        async function checkServerStatus() {
+            try {
+                const resp = await fetch('/api/status');
+                const data = await resp.json();
+                const warning = document.getElementById('status-warning');
+                if (data.status === 'error') {
+                    warning.style.display = 'block';
+                } else {
+                    warning.style.display = 'none';
+                }
+            } catch (e) { console.error(e); }
+        }
+
         async function loadWatchlist() {
+            checkServerStatus();
             const appDiv = document.getElementById('app');
             try {
                 const response = await fetch('/api/watchlist');
