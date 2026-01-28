@@ -111,11 +111,27 @@ def get_watchlist():
     data = list(collection.find({}, {'_id': 0}))
     return jsonify(data)
 
+import threading
+
+def force_sync_worker():
+    """Ejecuta la sincronización en un hilo separado."""
+    with app.app_context():
+        sync_watchlist()
+
 @app.route('/api/sync', methods=['GET', 'POST'])
 def force_sync():
-    # Permite forzar la sincronización desde la web
-    sync_watchlist()
-    return jsonify({"status": "sync_started"})
+    # Verificación de seguridad rápida
+    if not PLEX_TOKEN or not MONGO_URI:
+        return jsonify({"error": "Configuración incompleta (Tokens/Mongo)"}), 500
+        
+    # Lanzamos la sincronización en segundo plano para evitar el timeout de 30s de Render
+    thread = threading.Thread(target=force_sync_worker)
+    thread.start()
+    
+    return jsonify({
+        "status": "sync_initiated",
+        "message": "La sincronización ha comenzado en segundo plano. Los datos aparecerán en unos momentos."
+    })
 
 if __name__ == '__main__':
     # Ejecutar sincronización inicial al arrancar
