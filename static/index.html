@@ -15,6 +15,7 @@
             --text-dim: #a0a0a0;
             --success: #4caf50;
             --danger: #f44336;
+            --tmdb-blue: #01b4e4;
         }
 
         * {
@@ -32,41 +33,116 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
             padding: 40px 20px;
         }
 
         header {
             text-align: center;
-            margin-bottom: 60px;
+            margin-bottom: 50px;
         }
 
         h1 {
-            font-size: 3rem;
+            font-size: 3.5rem;
             font-weight: 600;
             background: linear-gradient(45deg, var(--primary), #ffffff);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
+        }
+
+        /* FILTERS CHIPS STYLE */
+        .filters-container {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 40px;
+            backdrop-filter: blur(15px);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            font-weight: 600;
+            min-width: 120px;
+        }
+
+        .chips {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            padding: 8px 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            color: var(--text-dim);
+        }
+
+        .chip:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #fff;
+        }
+
+        .chip.active {
+            background: var(--primary);
+            color: #000;
+            border-color: var(--primary);
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(229, 160, 13, 0.3);
         }
 
         .stats {
             display: flex;
             justify-content: center;
             gap: 20px;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .stat-badge {
-            padding: 8px 20px;
+            padding: 10px 24px;
             border-radius: 50px;
-            background: var(--card-bg);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             font-size: 0.9rem;
+            font-weight: 400;
         }
 
+        .sync-btn {
+            background: var(--primary) !important;
+            color: #000 !important;
+            border: none !important;
+            font-weight: 600 !important;
+            cursor: pointer;
+        }
+
+        .sync-btn:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+
+        /* GRID & CARDS */
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -75,23 +151,23 @@
 
         .card {
             background: var(--card-bg);
-            border-radius: 20px;
+            border-radius: 24px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
             backdrop-filter: blur(10px);
         }
 
         .card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transform: translateY(-12px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
             border-color: var(--primary);
         }
 
         .poster-container {
             width: 100%;
-            height: 400px;
+            height: 420px;
             overflow: hidden;
             position: relative;
         }
@@ -100,7 +176,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.5s ease;
+            transition: transform 0.6s ease;
         }
 
         .card:hover .poster {
@@ -111,51 +187,76 @@
             position: absolute;
             top: 15px;
             left: 15px;
-            padding: 5px 12px;
-            border-radius: 8px;
+            padding: 6px 12px;
+            border-radius: 10px;
             background: rgba(0, 0, 0, 0.7);
             font-size: 0.75rem;
             font-weight: 600;
             z-index: 10;
+            backdrop-filter: blur(5px);
         }
 
         .status-badge {
             position: absolute;
             top: 15px;
             right: 15px;
-            padding: 5px 12px;
-            border-radius: 8px;
+            padding: 6px 12px;
+            border-radius: 10px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 700;
             z-index: 10;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
         }
 
         .status-online {
             background: var(--success);
+            color: #fff;
         }
 
         .status-offline {
             background: var(--danger);
+            color: #fff;
+        }
+
+        .tmdb-badge {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #fff;
+            border-left: 4px solid var(--tmdb-blue);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 10;
         }
 
         .content {
-            padding: 20px;
+            padding: 24px;
         }
 
         .title {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 600;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            color: #fff;
         }
 
         .orig-title {
             font-size: 0.85rem;
             color: var(--text-dim);
-            margin-bottom: 15px;
+            margin-bottom: 18px;
             font-style: italic;
+            display: block;
+            min-height: 1.2rem;
         }
 
         .meta {
@@ -165,24 +266,41 @@
             margin-bottom: 15px;
         }
 
-        .year {
-            font-weight: 400;
+        .year-tag {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
             color: var(--text-dim);
         }
 
         .fa-link {
             display: inline-block;
-            padding: 8px 15px;
-            background: #2d2e33;
+            padding: 8px 16px;
+            background: #232529;
             color: #fff;
             text-decoration: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 0.8rem;
-            transition: background 0.2s;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .fa-link:hover {
             background: var(--primary);
+            color: #000;
+            border-color: var(--primary);
+        }
+
+        .lib-info {
+            font-size: 0.75rem;
+            color: var(--primary);
+            font-weight: 600;
+            min-height: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .loader {
@@ -190,13 +308,13 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 50vh;
+            height: 40vh;
         }
 
         .spinner {
             width: 50px;
             height: 50px;
-            border: 5px solid rgba(255, 255, 255, 0.1);
+            border: 4px solid rgba(255, 255, 255, 0.05);
             border-top-color: var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -211,8 +329,11 @@
 
         .error-msg {
             text-align: center;
+            padding: 40px;
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 20px;
             color: var(--danger);
-            margin-top: 40px;
         }
     </style>
 </head>
@@ -221,47 +342,76 @@
     <div class="container">
         <header>
             <h1>Plex Watchlist</h1>
-            <p style="color: var(--text-dim)">Gestiona tu lista de seguimiento y disponibilidad local</p>
+            <p style="color: var(--text-dim)">Tu biblioteca personal, cruzada con tu servidor local</p>
         </header>
 
-        <div class="filters">
-            <div class="filter-group">
-                <label>Disponibilidad</label>
-                <select id="filter-status" onchange="renderGrid()">
-                    <option value="all">Todos</option>
-                    <option value="online">En Servidor</option>
-                    <option value="offline">Faltan</option>
-                </select>
+        <div class="filters-container">
+            <!-- Disponibilidad -->
+            <div class="filter-row">
+                <div class="filter-label">Estado</div>
+                <div class="chips" id="status-chips">
+                    <div class="chip active" data-value="all">Todos</div>
+                    <div class="chip" data-value="online">En Servidor</div>
+                    <div class="chip" data-value="offline">Faltan</div>
+                </div>
             </div>
-            <div class="filter-group">
-                <label>Tipo</label>
-                <select id="filter-type" onchange="renderGrid()">
-                    <option value="all">Cualquier tipo</option>
-                    <option value="Película">Películas</option>
-                    <option value="Serie">Series</option>
-                </select>
+            <!-- Tipo -->
+            <div class="filter-row">
+                <div class="filter-label">Contenido</div>
+                <div class="chips" id="type-chips">
+                    <div class="chip active" data-value="all">Todo</div>
+                    <div class="chip" data-value="Película">Películas</div>
+                    <div class="chip" data-value="Serie">Series</div>
+                </div>
             </div>
-            <div class="filter-group">
-                <label>Ordenar por</label>
-                <select id="sort-order" onchange="renderGrid()">
-                    <option value="newest">Año (Reciente)</option>
-                    <option value="oldest">Año (Antiguo)</option>
-                    <option value="rating">Nota TMDB</option>
-                    <option value="title">Título A-Z</option>
-                </select>
+            <!-- Orden -->
+            <div class="filter-row">
+                <div class="filter-label">Orden</div>
+                <div class="chips" id="sort-chips">
+                    <div class="chip active" data-value="newest">Más Recientes</div>
+                    <div class="chip" data-value="oldest">Antiguas</div>
+                    <div class="chip" data-value="rating">Mejor Nota TMDB</div>
+                    <div class="chip" data-value="title">Título A-Z</div>
+                </div>
             </div>
         </div>
 
         <div id="app">
             <div class="loader">
                 <div class="spinner"></div>
-                <p>Escaneando tu biblioteca y servidor...</p>
+                <p>Cargando colección...</p>
             </div>
         </div>
     </div>
 
     <script>
         let fullData = [];
+        let currentFilters = {
+            status: 'all',
+            type: 'all',
+            sort: 'newest'
+        };
+
+        // Event listeners para los chips
+        document.querySelectorAll('.chips').forEach(container => {
+            container.addEventListener('click', (e) => {
+                if (e.target.classList.contains('chip')) {
+                    // Actualizar UI
+                    container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                    e.target.classList.add('active');
+
+                    // Actualizar Filtros
+                    const parentId = container.id;
+                    const value = e.target.dataset.value;
+
+                    if (parentId === 'status-chips') currentFilters.status = value;
+                    if (parentId === 'type-chips') currentFilters.type = value;
+                    if (parentId === 'sort-chips') currentFilters.sort = value;
+
+                    renderGrid();
+                }
+            });
+        });
 
         async function loadWatchlist() {
             const appDiv = document.getElementById('app');
@@ -271,69 +421,72 @@
                 renderGrid();
             } catch (error) {
                 console.error(error);
-                appDiv.innerHTML = '<div class="error-msg">⚠️ No se pudo conectar con el servidor backend. Asegúrate de que app.py esté ejecutándose.</div>';
+                appDiv.innerHTML = '<div class="error-msg">⚠️ No se pudo conectar con el servidor. Revisa tu conexión.</div>';
             }
         }
 
         function renderGrid() {
             const appDiv = document.getElementById('app');
-            const filterStatus = document.getElementById('filter-status').value;
-            const filterType = document.getElementById('filter-type').value;
-            const sortOrder = document.getElementById('sort-order').value;
+            if (!fullData || fullData.length === 0) {
+                appDiv.innerHTML = '<p style="text-align:center; padding:50px; color:var(--text-dim)">No se han encontrado datos. ¿Has sincronizado con Plex?</p>';
+                return;
+            }
 
             let filtered = [...fullData];
 
             // Filtrar
-            if (filterStatus === 'online') filtered = filtered.filter(i => i.on_server);
-            if (filterStatus === 'offline') filtered = filtered.filter(i => !i.on_server);
-            if (filterType !== 'all') filtered = filtered.filter(i => i.type === filterType);
+            if (currentFilters.status === 'online') filtered = filtered.filter(i => i.on_server);
+            if (currentFilters.status === 'offline') filtered = filtered.filter(i => !i.on_server);
+            if (currentFilters.type !== 'all') filtered = filtered.filter(i => i.type === currentFilters.type);
 
             // Ordenar
             filtered.sort((a, b) => {
-                if (sortOrder === 'newest') return (b.year || 0) - (a.year || 0);
-                if (sortOrder === 'oldest') return (a.year || 0) - (b.year || 0);
-                if (sortOrder === 'rating') return (parseFloat(b.score) || 0) - (parseFloat(a.score) || 0);
-                if (sortOrder === 'title') return a.title.localeCompare(b.title);
+                if (currentFilters.sort === 'newest') return (b.year || 0) - (a.year || 0);
+                if (currentFilters.sort === 'oldest') return (a.year || 0) - (b.year || 0);
+                if (currentFilters.sort === 'rating') return (parseFloat(b.score) || 0) - (parseFloat(a.score) || 0);
+                if (currentFilters.sort === 'title') return a.title.localeCompare(b.title);
                 return 0;
             });
 
             const statsHtml = `
                 <div class="stats">
-                    <div class="stat-badge">Total: ${filtered.length}</div>
-                    <div class="stat-badge">En Servidor: ${filtered.filter(i => i.on_server).length}</div>
-                    <button onclick="forceSync()" class="stat-badge" style="cursor:pointer; background: var(--primary); color: #000; border:none; font-weight:600;">🔄 Sincronizar</button>
+                    <div class="stat-badge">Total: <b>${filtered.length}</b></div>
+                    <div class="stat-badge">Disponibles: <span style="color:var(--success)">${filtered.filter(i => i.on_server).length}</span></div>
+                    <button onclick="forceSync()" class="stat-badge sync-btn">🔄 Sincronizar con Plex</button>
                 </div>
             `;
 
             const gridHtml = `
                 <div class="grid">
-                    ${filtered.map(item => `
+                    ${filtered.map(item => {
+                const hasScore = item.score && item.score !== 'N/A' && item.score !== '0';
+                return `
                         <div class="card">
                             <span class="type-badge">${item.type}</span>
                             <span class="status-badge ${item.on_server ? 'status-online' : 'status-offline'}">
                                 ${item.on_server ? 'EN SERVIDOR' : 'FALTA'}
                             </span>
                             <div class="poster-container">
-                                <img class="poster" src="${item.image || 'https://via.placeholder.com/300x450?text=No+Poster'}" alt="${item.title}" loading="lazy">
-                                ${item.score && item.score !== 'N/A' ? `
+                                <img class="poster" src="${item.image || 'https://via.placeholder.com/300x450?text=Sin+Poster'}" alt="${item.title}" loading="lazy">
+                                ${hasScore ? `
                                     <div class="tmdb-badge">
-                                        <span style="color:#01b4e4">★</span> ${item.score}
+                                        <span style="color:#f5c518">★</span> ${item.score}
                                     </div>
                                 ` : ''}
                             </div>
                             <div class="content">
                                 <div class="title" title="${item.title}">${item.title}</div>
-                                <div class="orig-title">${item.orig || item.title}</div>
+                                <div class="orig-title">${item.orig && item.orig !== item.title ? item.orig : '&nbsp;'}</div>
                                 <div class="meta">
-                                    <span class="year" style="background:#2d2e33; padding:2px 8px; border-radius:5px; font-size:0.8rem">${item.year}</span>
-                                    <a href="${item.url}" target="_blank" class="fa-link">FilmAffinity</a>
+                                    <span class="year-tag">${item.year}</span>
+                                    <a href="${item.url}" target="_blank" class="fa-link">Ver en FilmAffinity</a>
                                 </div>
-                                <div style="font-size: 0.7rem; color: var(--text-dim); min-height:1rem">
+                                <div class="lib-info">
                                     ${item.on_server ? '📍 ' + item.libraries.join(', ') : ''}
                                 </div>
                             </div>
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
             `;
 
@@ -341,13 +494,14 @@
         }
 
         async function forceSync() {
-            if (!confirm("¿Quieres forzar la sincronización con Plex ahora? Puede tardar unos segundos.")) return;
+            if (!confirm("Esta acción actualizará tu lista con Plex y TMDB. ¿Continuar?")) return;
             try {
-                await fetch('/api/sync', { method: 'POST' });
-                alert("Sincronización iniciada. Refresca en unos segundos.");
+                const response = await fetch('/api/sync', { method: 'POST' });
+                const res = await response.json();
+                alert(res.message || "Sincronización iniciada.");
                 loadWatchlist();
             } catch (e) {
-                alert("Error al sincronizar.");
+                alert("Error al conectar con el servidor de sincronización.");
             }
         }
 
