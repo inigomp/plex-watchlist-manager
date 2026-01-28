@@ -23,17 +23,47 @@ PLEX_TOKEN = os.getenv("PLEX_TOKEN")
 SERVER_NAME = os.getenv("SERVER_NAME", "Navidad")
 MONGO_URI = os.getenv("MONGO_URI") # URI de MongoDB Atlas
 TMDB_API_KEY = os.getenv("TMDB_API_KEY") # API Key de TMDB
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # Conexión a MongoDB
 client = MongoClient(MONGO_URI)
 db = client['plex_manager']
 collection = db['watchlist']
 
+def send_telegram_notification(item):
+    """Envía un mensaje a Telegram avisando de que hay contenido nuevo disponible."""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+        
+    msg = f"🍿 *¡Nuevo en tu Plex!*\n\n"
+    msg += f"🎬 *{item['title']}* ({item['year']})\n"
+    msg += f"📁 Tipo: {item['type']}\n"
+    msg += f"📍 Disponible en: {', '.join(item['libraries'])}\n\n"
+    msg += f"[Ver en FilmAffinity]({item['url']})"
+    
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": msg,
+        "parse_mode": "Markdown",
+        "disable_web_page_preview": False
+    }
+    
+    try:
+        requests.post(url, json=payload, timeout=10)
+        logger.info(f"Notificación de Telegram enviada para: {item['title']}")
+    except Exception as e:
+        logger.error(f"Error enviando Telegram: {e}")
+
 def sync_watchlist():
     """Tarea en segundo plano que sincroniza Plex con MongoDB."""
     logger.info("Iniciando sincronización con Plex...")
     try:
         plex = PlexAPI(PLEX_TOKEN)
+        
+        # 0. Obtener estado anterior para detectar novedades
+        old_data = {item['plex_id']: item['on_server'] for item in collection.find({}, {'plex_id': 1, 'on_server': 1})}
         
         # 1. Obtener Watchlist de Plex
         watchlist_raw = plex.get_watchlist()
@@ -55,6 +85,7 @@ def sync_watchlist():
 
         # 3. Procesar y Cruzar
         for item in watchlist_raw:
+            plex_id = item.get("ratingKey")
             title = item.get("title")
             orig = item.get("originalTitle")
             year = item.get("year")
@@ -92,8 +123,8 @@ def sync_watchlist():
                 except Exception as e:
                     logger.error(f"Error buscando en TMDB para {title}: {e}")
 
-            watchlist_final.append({
-                "plex_id": item.get("ratingKey"),
+            new_item = {
+                "plex_id": plex_id,
                 "title": title,
                 "orig": orig,
                 "year": year,
@@ -104,9 +135,16 @@ def sync_watchlist():
                 "libraries": found_in_libs,
                 "score": tmdb_score,
                 "added_at": added_at
-            })
+            }
+            watchlist_final.append(new_item)
 
-        # 4. Guardar en MongoDB (Update or Insert)
+            # 5. DETECTAR NOVEDAD PARA TELEGRAM
+            # Si antes no estaba en servidor (o no existía en nuestra DB) y ahora SÍ está.
+            was_on_server = old_data.get(plex_id, False)
+            if on_server and not was_on_server:
+                send_telegram_notification(new_item)
+
+        # 6. Guardar en MongoDB
         if watchlist_final:
             # Opción simple: Limpiar y reinsertar (para mantener sincronía total)
             collection.delete_many({})
