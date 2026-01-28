@@ -1,5 +1,12 @@
-node_modules/
 __pycache__/
+*.py[cod]
+*$py.class
 .env
-*.pyc
-plex-movies-list.json
+.venv
+env/
+venv/
+ENV/
+*.png
+*.log
+.vscode/
+.idea/
