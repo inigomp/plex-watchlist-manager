@@ -63,33 +63,53 @@ def send_telegram_notification(item):
         logger.error(f"Error enviando Telegram: {e}")
 
 def sync_watchlist():
-    """Tarea en segundo plano que sincroniza Plex con MongoDB."""
-    logger.info("Iniciando sincronización con Plex...")
+    """Tarea en segundo plano que sincroniza Plex con MongoDB. Resistente a fallos de conexión."""
+    logger.info("Iniciando sincronización resiliente...")
     try:
         plex = PlexAPI(PLEX_TOKEN)
         
         # 0. Obtener estado anterior para detectar novedades
-        old_data = {item['plex_id']: item['on_server'] for item in collection.find({}, {'plex_id': 1, 'on_server': 1})}
+        old_data = {}
+        try:
+            old_data = {item['plex_id']: item['on_server'] for item in collection.find({}, {'plex_id': 1, 'on_server': 1})}
+        except Exception as e:
+            logger.error(f"Error leyendo estado anterior de Mongo: {e}")
         
-        # 1. Obtener Watchlist de Plex
-        watchlist_raw = plex.get_watchlist()
+        # 1. Obtener Watchlist de Plex (Esto es vital, si falla aquí paramos)
+        try:
+            watchlist_raw = plex.get_watchlist()
+            if not watchlist_raw:
+                logger.warning("La Watchlist de Plex está vacía o no se pudo recuperar.")
+                return
+        except Exception as e:
+            logger.error(f"Error crítico recuperando Watchlist: {e}")
+            return
+
         watchlist_final = []
         
-        # 2. Obtener librerías del servidor para cruce
-        libraries = plex.get_server_libraries(SERVER_NAME)
+        # 2. Obtener librerías del servidor (Si falla, continuamos con on_server=False)
         server_items = []
-        if libraries:
-            for lib in libraries:
-                lib_items = plex.get_library_items(lib)
-                for item in lib_items:
-                    server_items.append({
-                        "title": item.get("title", "").lower(),
-                        "orig": item.get("originalTitle", "").lower(),
-                        "lib": lib["title"],
-                        "added_at": int(item.get("addedAt", 0))
-                    })
+        try:
+            libraries = plex.get_server_libraries(SERVER_NAME)
+            if libraries:
+                for lib in libraries:
+                    try:
+                        lib_items = plex.get_library_items(lib)
+                        for item in lib_items:
+                            server_items.append({
+                                "title": item.get("title", "").lower(),
+                                "orig": item.get("originalTitle", "").lower(),
+                                "lib": lib["title"],
+                                "added_at": int(item.get("addedAt", 0))
+                            })
+                    except Exception as e:
+                        logger.warning(f"No se pudo leer la librería {lib.get('title')}: {e}")
+            else:
+                logger.warning(f"No se encontró el servidor '{SERVER_NAME}' o no es accesible.")
+        except Exception as e:
+            logger.error(f"Error conectando con el servidor Plex para el cruce: {e}")
 
-        # 3. Procesar y Cruzar
+        # 3. Procesar y Cruzar (Independiente de si el servidor falló)
         for item in watchlist_raw:
             plex_id = item.get("ratingKey")
             title = item.get("title")
@@ -98,11 +118,12 @@ def sync_watchlist():
             type_ = "Película" if item.get("type") == "movie" else "Serie"
             thumb = item.get("thumb")
             
+            # Gestión de imagen
             image_url = thumb if thumb and thumb.startswith('http') else None
             if not image_url and thumb:
                 image_url = f"https://metadata.provider.plex.tv{thumb}?X-Plex-Token={PLEX_TOKEN}"
             
-            keys = {title.lower()}
+            keys = {title.lower()} if title else set()
             if orig: keys.add(orig.lower())
             
             # Verificar disponibilidad
@@ -110,43 +131,40 @@ def sync_watchlist():
             found_in_libs = []
             added_at = 0
             for s_item in server_items:
-                if s_item["title"] in keys or (s_item["orig"] and s_item["orig"] in keys):
+                if (s_item["title"] and s_item["title"] in keys) or (s_item["orig"] and s_item["orig"] in keys):
                     on_server = True
                     added_at = s_item["added_at"]
                     if s_item["lib"] not in found_in_libs:
                         found_in_libs.append(s_item["lib"])
             
-            # 4. Obtener nota de TMDB (Opcional si hay API Key)
+            # 4. Obtener nota de TMDB (Siempre se intenta, haya servidor o no)
             tmdb_score = "N/A"
             if TMDB_API_KEY:
                 try:
                     import requests
                     search_type = "movie" if item.get("type") == "movie" else "tv"
-                    # Priorizamos búsqueda por título original para mejor match en TMDB
                     query = orig if orig else title
-                    tmdb_url = f"https://api.themoviedb.org/3/search/{search_type}?api_key={TMDB_API_KEY}&query={urllib.parse.quote(query)}&year={year}"
-                    tmdb_res = requests.get(tmdb_url, timeout=5).json()
-                    
-                    # Si no hay resultados con el original, probamos con el traducido
-                    if not tmdb_res.get("results") and orig:
-                        tmdb_url = f"https://api.themoviedb.org/3/search/{search_type}?api_key={TMDB_API_KEY}&query={urllib.parse.quote(title)}&year={year}"
+                    if query:
+                        tmdb_url = f"https://api.themoviedb.org/3/search/{search_type}?api_key={TMDB_API_KEY}&query={urllib.parse.quote(query)}&year={year}"
                         tmdb_res = requests.get(tmdb_url, timeout=5).json()
+                        
+                        if not tmdb_res.get("results") and title:
+                            tmdb_url = f"https://api.themoviedb.org/3/search/{search_type}?api_key={TMDB_API_KEY}&query={urllib.parse.quote(title)}&year={year}"
+                            tmdb_res = requests.get(tmdb_url, timeout=5).json()
 
-                    if tmdb_res.get("results"):
-                        tmdb_score = str(round(tmdb_res["results"][0].get("vote_average", 0), 1))
+                        if tmdb_res.get("results"):
+                            tmdb_score = str(round(tmdb_res["results"][0].get("vote_average", 0), 1))
                 except Exception as e:
-                    logger.error(f"Error buscando en TMDB para {title}: {e}")
-            else:
-                logger.warning("TMDB_API_KEY no configurada. Las notas aparecerán como N/A.")
+                    logger.error(f"Error TMDB para {title}: {e}")
 
             new_item = {
                 "plex_id": plex_id,
-                "title": title, # Ahora será en español gracias a X-Plex-Language
-                "orig": orig,   # Título original (normalmente inglés)
+                "title": title,
+                "orig": orig,
                 "year": year,
                 "type": type_,
                 "image": image_url,
-                "url": f"https://www.filmaffinity.com/es/search.php?stext={title.replace(' ', '+')}",
+                "url": f"https://www.filmaffinity.com/es/search.php?stext={urllib.parse.quote(title or '')}",
                 "on_server": on_server,
                 "libraries": found_in_libs,
                 "score": tmdb_score,
@@ -154,13 +172,19 @@ def sync_watchlist():
             }
             watchlist_final.append(new_item)
 
-            # 5. DETECTAR NOVEDAD PARA TELEGRAM
-            # Si antes no estaba en servidor (o no existía en nuestra DB) y ahora SÍ está.
+            # 5. Detectar Novedad para Telegram
             was_on_server = old_data.get(plex_id, False)
             if on_server and not was_on_server:
                 send_telegram_notification(new_item)
 
         # 6. Guardar en MongoDB
+        if watchlist_final:
+            collection.delete_many({})
+            collection.insert_many(watchlist_final)
+            logger.info(f"Sincronización finalizada. Guardados {len(watchlist_final)} elementos.")
+        
+    except Exception as e:
+        logger.error(f"Error general en el proceso de sincronización: {e}")
         if watchlist_final:
             # Opción simple: Limpiar y reinsertar (para mantener sincronía total)
             collection.delete_many({})
