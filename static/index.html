@@ -319,7 +319,7 @@
             text-transform: uppercase;
         }
 
-        .badge-cidon {
+        .badge-rebe {
             background: #ff4757;
         }
 
@@ -489,7 +489,7 @@
         <div class="label">Dueño de la lista</div>
         <div class="chips" id="owner-chips">
             <div class="chip active" data-value="all">Todos</div>
-            <div class="chip" data-value="Cidón">Cidón</div>
+            <div class="chip" data-value="Rebe">Rebe</div>
             <div class="chip" data-value="Iñigo">Iñigo</div>
             <div class="chip" data-value="Pedro">Pedro</div>
         </div>
@@ -516,8 +516,8 @@
             <div class="modal-title">¿De quién es esta lista?</div>
             <div id="modal-options">
                 <label class="owner-option">
-                    <input type="checkbox" value="Cidón" id="check-cidon">
-                    <span>Lista de Cidón</span>
+                    <input type="checkbox" value="Rebe" id="check-rebe">
+                    <span>Lista de Rebe</span>
                 </label>
                 <label class="owner-option">
                     <input type="checkbox" value="Iñigo" id="check-inigo">
@@ -687,10 +687,43 @@
         async function forceSync() {
             if (!confirm("Esta acción actualizará tu lista con Plex y TMDB. ¿Continuar?")) return;
             try {
+                // 1. Iniciar Sync
                 const response = await fetch('/api/sync', { method: 'POST' });
                 const res = await response.json();
-                alert(res.message || "Sincronización iniciada.");
-                loadWatchlist();
+
+                // 2. Feedback inicial
+                const btn = document.querySelector('.sync-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '⏳ Sincronizando...';
+                btn.disabled = true;
+
+                // 3. Polling de estado
+                const startTime = Math.floor(Date.now() / 1000);
+                const interval = setInterval(async () => {
+                    try {
+                        const sResp = await fetch('/api/status');
+                        const status = await sResp.json();
+
+                        // Si el timestamp del estado es MAYOR que cuando empezamos, es que ha terminado
+                        if (status.timestamp > startTime) {
+                            clearInterval(interval);
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+
+                            if (status.status === 'success') {
+                                // Recarga silenciosa pero notificando
+                                loadWatchlist();
+                                // Pequeña notificación toast si fuera posible, o cambio de texto temporal
+                                const prev = btn.innerHTML;
+                                btn.innerHTML = '✅ ¡Listo!';
+                                setTimeout(() => btn.innerHTML = prev, 2000);
+                            } else {
+                                alert("Error en sincronización: " + (status.error || "Desconocido"));
+                            }
+                        }
+                    } catch (e) { console.error("Polling error", e); }
+                }, 2000);
+
             } catch (e) {
                 alert("Error al conectar con el servidor de sincronización.");
             }
@@ -704,7 +737,7 @@
             if (!item) return;
 
             // Reset checks
-            document.getElementById('check-cidon').checked = item.owners && item.owners.includes('Cidón');
+            document.getElementById('check-rebe').checked = item.owners && item.owners.includes('Rebe');
             document.getElementById('check-inigo').checked = item.owners && item.owners.includes('Iñigo');
             document.getElementById('check-pedro').checked = item.owners && item.owners.includes('Pedro');
 
@@ -718,7 +751,7 @@
 
         document.getElementById('save-owner-btn').addEventListener('click', async () => {
             const owners = [];
-            if (document.getElementById('check-cidon').checked) owners.push('Cidón');
+            if (document.getElementById('check-rebe').checked) owners.push('Rebe');
             if (document.getElementById('check-inigo').checked) owners.push('Iñigo');
             if (document.getElementById('check-pedro').checked) owners.push('Pedro');
 
