@@ -117,9 +117,14 @@ def sync_watchlist():
             logger.error(f"Error conectando con el servidor Plex para el cruce: {e}")
 
         # 3. Procesar y Cruzar (Independiente de si el servidor falló)
-        for item in watchlist_raw:
+        for idx, item in enumerate(watchlist_raw):
             plex_id = item.get("ratingKey")
             title = item.get("title")
+            # ... (rest of the processing)
+            
+            # (Keeping the indices for sorting: 0 is the newest in Watchlist)
+            watchlist_order = idx 
+            
             orig = item.get("originalTitle")
             year = item.get("year")
             type_ = "Película" if item.get("type") == "movie" else "Serie"
@@ -162,7 +167,7 @@ def sync_watchlist():
                         if tmdb_res.get("results"):
                             tmdb_score = str(round(tmdb_res["results"][0].get("vote_average", 0), 1))
                 except Exception as e:
-                    logger.error(f"Error TMDB para {title}: {e}")
+                    logger.error(f"Error TMDB for {title}: {e}")
 
             new_item = {
                 "plex_id": plex_id,
@@ -176,7 +181,8 @@ def sync_watchlist():
                 "libraries": found_in_libs,
                 "score": tmdb_score,
                 "added_at": added_at,
-                "owners": old_owners_map.get(plex_id, []) # Preservar dueños si ya existían
+                "owners": old_owners_map.get(plex_id, []),
+                "watchlist_order": watchlist_order
             }
             watchlist_final.append(new_item)
 

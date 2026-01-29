@@ -477,8 +477,9 @@
             <div class="filter-row">
                 <div class="filter-label">Orden</div>
                 <div class="chips" id="sort-chips">
-                    <div class="chip active" data-value="newest">Más Recientes</div>
-                    <div class="chip" data-value="oldest">Antiguas</div>
+                    <div class="chip active" data-value="watchlist_newest">Watchlist (Novedad)</div>
+                    <div class="chip" data-value="newest">Año (Recientes)</div>
+                    <div class="chip" data-value="oldest">Año (Antiguas)</div>
                     <div class="chip" data-value="rating">Mejor Nota TMDB</div>
                     <div class="chip" data-value="title">Título A-Z</div>
                 </div>
@@ -539,7 +540,7 @@
         let currentFilters = {
             status: 'all',
             type: 'all',
-            sort: 'newest',
+            sort: 'watchlist_newest',
             owner: 'all'
         };
 
@@ -616,6 +617,7 @@
 
             // Ordenar
             filtered.sort((a, b) => {
+                if (currentFilters.sort === 'watchlist_newest') return (a.watchlist_order || 0) - (b.watchlist_order || 0);
                 if (currentFilters.sort === 'newest') return (b.year || 0) - (a.year || 0);
                 if (currentFilters.sort === 'oldest') return (a.year || 0) - (b.year || 0);
                 if (currentFilters.sort === 'rating') return (parseFloat(b.score) || 0) - (parseFloat(a.score) || 0);
