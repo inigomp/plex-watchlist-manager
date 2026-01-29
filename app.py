@@ -106,6 +106,7 @@ def sync_watchlist():
                             server_items.append({
                                 "title": item.get("title", "").lower(),
                                 "orig": item.get("originalTitle", "").lower(),
+                                "year": int(item.get("year", 0)),
                                 "lib": lib["title"],
                                 "added_at": int(item.get("addedAt", 0))
                             })
@@ -138,12 +139,20 @@ def sync_watchlist():
             keys = {title.lower()} if title else set()
             if orig: keys.add(orig.lower())
             
-            # Verificar disponibilidad
+            # Verificar disponibilidad (Título + Año +/- 1)
             on_server = False
             found_in_libs = []
             added_at = 0
             for s_item in server_items:
-                if (s_item["title"] and s_item["title"] in keys) or (s_item["orig"] and s_item["orig"] in keys):
+                title_match = (title and s_item["title"] == title.lower()) or \
+                             (orig and s_item["orig"] == orig.lower()) or \
+                             (title and s_item["orig"] == title.lower()) or \
+                             (orig and s_item["title"] == orig.lower())
+                
+                # Tolerancia de 1 año para evitar diferencias entre Plex y Watchlist
+                year_match = (not year or s_item["year"] == 0 or abs(s_item["year"] - year) <= 1)
+                
+                if title_match and year_match:
                     on_server = True
                     added_at = s_item["added_at"]
                     if s_item["lib"] not in found_in_libs:
