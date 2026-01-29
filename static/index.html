@@ -303,6 +303,114 @@
             gap: 5px;
         }
 
+        /* OWNER BADGES ON CARD */
+        .owners-container {
+            display: flex;
+            gap: 4px;
+            margin-top: 10px;
+        }
+
+        .owner-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge-cidon {
+            background: #ff4757;
+        }
+
+        .badge-inigo {
+            background: #2f3542;
+        }
+
+        .badge-pedro {
+            background: #2ed573;
+        }
+
+        /* MODAL STYLE */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-content {
+            background: #1a1d23;
+            padding: 30px;
+            border-radius: 24px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .owner-option {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .owner-option:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .owner-option input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+        }
+
+        .btn-save {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
         .loader {
             display: flex;
             flex-direction: column;
@@ -377,18 +485,51 @@
             </div>
         </div>
 
-        <div id="status-warning" style="display:none; margin-bottom:20px;">
-            <div class="error-msg"
-                style="background:rgba(255,193,7,0.1); border-color:#ffc107; color:#ffc107; padding:15px; text-align:left;">
-                ⚠️ <b>Conexión fallida con el servidor Plex:</b> El sistema no ha podido conectar con tu servidor local
-                (Posible timeout). Los elementos se muestran como "FALTA" hasta que la conexión se restablezca.
-            </div>
+        <div class="label">Dueño de la lista</div>
+        <div class="chips" id="owner-chips">
+            <div class="chip active" data-value="all">Todos</div>
+            <div class="chip" data-value="Cidón">Cidón</div>
+            <div class="chip" data-value="Iñigo">Iñigo</div>
+            <div class="chip" data-value="Pedro">Pedro</div>
         </div>
+    </div>
 
-        <div id="app">
-            <div class="loader">
-                <div class="spinner"></div>
-                <p>Cargando colección...</p>
+    <div id="status-warning" style="display:none; margin-bottom:20px;">
+        <div class="error-msg"
+            style="background:rgba(255,193,7,0.1); border-color:#ffc107; color:#ffc107; padding:15px; text-align:left;">
+            ⚠️ <b>Conexión fallida con el servidor Plex:</b> El sistema no ha podido conectar con tu servidor local
+            (Posible timeout). Los elementos se muestran como "FALTA" hasta que la conexión se restablezca.
+        </div>
+    </div>
+
+    <div id="app">
+        <div class="loader">
+            <div class="spinner"></div>
+            <p>Cargando colección...</p>
+        </div>
+    </div>
+    </div>
+
+    <div class="modal-overlay" id="owner-modal">
+        <div class="modal-content">
+            <div class="modal-title">¿De quién es esta lista?</div>
+            <div id="modal-options">
+                <label class="owner-option">
+                    <input type="checkbox" value="Cidón" id="check-cidon">
+                    <span>Lista de Cidón</span>
+                </label>
+                <label class="owner-option">
+                    <input type="checkbox" value="Iñigo" id="check-inigo">
+                    <span>Lista de Iñigo</span>
+                </label>
+                <label class="owner-option">
+                    <input type="checkbox" value="Pedro" id="check-pedro">
+                    <span>Lista de Pedro</span>
+                </label>
+            </div>
+            <div class="modal-btns">
+                <button class="btn btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button class="btn btn-save" id="save-owner-btn">Guardar</button>
             </div>
         </div>
     </div>
@@ -398,7 +539,8 @@
         let currentFilters = {
             status: 'all',
             type: 'all',
-            sort: 'newest'
+            sort: 'newest',
+            owner: 'all'
         };
 
         // Event listeners para los chips
@@ -416,6 +558,7 @@
                     if (parentId === 'status-chips') currentFilters.status = value;
                     if (parentId === 'type-chips') currentFilters.type = value;
                     if (parentId === 'sort-chips') currentFilters.sort = value;
+                    if (parentId === 'owner-chips') currentFilters.owner = value;
 
                     renderGrid();
                 }
@@ -466,6 +609,11 @@
             }
             if (currentFilters.type !== 'all') filtered = filtered.filter(i => i.type === currentFilters.type);
 
+            // Filtro por Dueño
+            if (currentFilters.owner !== 'all') {
+                filtered = filtered.filter(i => i.owners && i.owners.includes(currentFilters.owner));
+            }
+
             // Ordenar
             filtered.sort((a, b) => {
                 if (currentFilters.sort === 'newest') return (b.year || 0) - (a.year || 0);
@@ -490,8 +638,17 @@
                 const oneWeekAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
                 const isRecent = item.on_server && item.added_at >= oneWeekAgo;
 
+                // Generar badges de dueños
+                let ownerBadges = '';
+                if (item.owners) {
+                    item.owners.forEach(o => {
+                        let cls = o.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        ownerBadges += `<span class="owner-badge badge-${cls}">${o[0]}</span>`;
+                    });
+                }
+
                 return `
-                        <div class="card">
+                        <div class="card" onclick="openOwnerModal('${item.plex_id}')">
                             <span class="type-badge">${item.type}</span>
                             <span class="status-badge ${item.on_server ? 'status-online' : 'status-offline'}">
                                 ${item.on_server ? 'EN SERVIDOR' : 'FALTA'}
@@ -510,7 +667,8 @@
                                 <div class="orig-title">${item.orig && item.orig !== item.title ? item.orig : '&nbsp;'}</div>
                                 <div class="meta">
                                     <span class="year-tag">${item.year}</span>
-                                    <a href="${item.url}" target="_blank" class="fa-link">Ver en FilmAffinity</a>
+                                    <div class="owners-container">${ownerBadges}</div>
+                                    <a href="${item.url}" target="_blank" class="fa-link" onclick="event.stopPropagation()">Ver en FilmAffinity</a>
                                 </div>
                                 <div class="lib-info">
                                     ${item.on_server ? '📍 ' + item.libraries.join(', ') : ''}
@@ -535,6 +693,53 @@
                 alert("Error al conectar con el servidor de sincronización.");
             }
         }
+
+        let currentEditPlexId = null;
+
+        function openOwnerModal(plexId) {
+            currentEditPlexId = plexId;
+            const item = fullData.find(i => i.plex_id === plexId);
+            if (!item) return;
+
+            // Reset checks
+            document.getElementById('check-cidon').checked = item.owners && item.owners.includes('Cidón');
+            document.getElementById('check-inigo').checked = item.owners && item.owners.includes('Iñigo');
+            document.getElementById('check-pedro').checked = item.owners && item.owners.includes('Pedro');
+
+            document.getElementById('owner-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('owner-modal').style.display = 'none';
+            currentEditPlexId = null;
+        }
+
+        document.getElementById('save-owner-btn').addEventListener('click', async () => {
+            const owners = [];
+            if (document.getElementById('check-cidon').checked) owners.push('Cidón');
+            if (document.getElementById('check-inigo').checked) owners.push('Iñigo');
+            if (document.getElementById('check-pedro').checked) owners.push('Pedro');
+
+            try {
+                const response = await fetch('/api/watchlist/update_owners', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plex_id: currentEditPlexId, owners: owners })
+                });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    // Actualizar datos locales
+                    const idx = fullData.findIndex(i => i.plex_id === currentEditPlexId);
+                    if (idx !== -1) fullData[idx].owners = owners;
+                    renderGrid();
+                    closeModal();
+                } else {
+                    alert("Error: " + res.message);
+                }
+            } catch (e) {
+                alert("Error al guardar dueños.");
+            }
+        });
 
         loadWatchlist();
     </script>

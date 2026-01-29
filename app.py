@@ -4,7 +4,7 @@ import threading
 import urllib.parse
 import logging
 import requests
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 from pymongo import MongoClient
@@ -70,10 +70,15 @@ def sync_watchlist():
     try:
         plex = PlexAPI(PLEX_TOKEN)
         
-        # 0. Obtener estado anterior para detectar novedades
+        # 0. Obtener estado anterior para detectar novedades y preservar dueños
         old_data = {}
+        old_owners_map = {}
         try:
-            old_data = {item['plex_id']: item['on_server'] for item in collection.find({}, {'plex_id': 1, 'on_server': 1})}
+            for item in collection.find({}, {'plex_id': 1, 'on_server': 1, 'owners': 1}):
+                pid = item.get('plex_id')
+                if pid:
+                    old_data[pid] = item.get('on_server', False)
+                    old_owners_map[pid] = item.get('owners', [])
         except Exception as e:
             logger.error(f"Error leyendo estado anterior de Mongo: {e}")
         
@@ -170,7 +175,8 @@ def sync_watchlist():
                 "on_server": on_server,
                 "libraries": found_in_libs,
                 "score": tmdb_score,
-                "added_at": added_at
+                "added_at": added_at,
+                "owners": old_owners_map.get(plex_id, []) # Preservar dueños si ya existían
             }
             watchlist_final.append(new_item)
 
@@ -216,6 +222,32 @@ scheduler.start()
 @app.route('/')
 def index():
     return app.send_static_file('index.html')
+
+@app.route('/api/watchlist/update_owners', methods=['POST'])
+def update_owners():
+    """Actualiza los dueños de una película específica."""
+    try:
+        data = request.json
+        plex_id = data.get('plex_id')
+        owners = data.get('owners', [])
+        
+        if not plex_id:
+            return jsonify({"status": "error", "message": "Falta plex_id"}), 400
+            
+        # Actualizamos en Mongo
+        result = collection.update_one(
+            {"plex_id": plex_id},
+            {"$set": {"owners": owners}}
+        )
+        
+        if result.modified_count > 0 or result.matched_count > 0:
+            return jsonify({"status": "success"})
+        else:
+            return jsonify({"status": "error", "message": "No se encontró el elemento"}), 404
+            
+    except Exception as e:
+        logger.error(f"Error actualizando dueños: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
