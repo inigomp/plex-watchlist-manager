@@ -107,6 +107,7 @@ def sync_watchlist():
                                 "title": item.get("title", "").lower(),
                                 "orig": item.get("originalTitle", "").lower(),
                                 "year": int(item.get("year", 0)),
+                                "guid": item.get("guid"),
                                 "lib": lib["title"],
                                 "added_at": int(item.get("addedAt", 0))
                             })
@@ -139,24 +140,35 @@ def sync_watchlist():
             keys = {title.lower()} if title else set()
             if orig: keys.add(orig.lower())
             
-            # Verificar disponibilidad (Título + Año +/- 1)
+            # Verificar disponibilidad (Prioridad: GUID -> Título+Año)
             on_server = False
             found_in_libs = []
             added_at = 0
             for s_item in server_items:
-                title_match = (title and s_item["title"] == title.lower()) or \
-                             (orig and s_item["orig"] == orig.lower()) or \
-                             (title and s_item["orig"] == title.lower()) or \
-                             (orig and s_item["title"] == orig.lower())
+                # 1. Match por GUID (El más preciso)
+                # Soportamos el formato moderno plex:// y el antiguo match por ratingKey
+                guid_match = (plex_id and s_item["guid"] and s_item["guid"].endswith(plex_id)) or \
+                            (item.get("guid") and s_item["guid"] == item.get("guid"))
                 
-                # Tolerancia de 1 año para evitar diferencias entre Plex y Watchlist
-                year_match = (not year or s_item["year"] == 0 or abs(s_item["year"] - year) <= 1)
+                # 2. Match por Título + Año (Fallback con verificación estricta de año)
+                title_match = False
+                year_match = False
                 
-                if title_match and year_match:
+                # Falback solo si ambos años son válidos > 0
+                if not guid_match and year > 0 and s_item["year"] > 0:
+                    title_match = (title and s_item["title"] == title.lower()) or \
+                                 (orig and s_item["orig"] == orig.lower()) or \
+                                 (title and s_item["orig"] == title.lower()) or \
+                                 (orig and s_item["title"] == orig.lower())
+                    
+                    year_match = abs(s_item["year"] - year) <= 1
+                
+                if guid_match or (title_match and year_match):
                     on_server = True
                     added_at = s_item["added_at"]
                     if s_item["lib"] not in found_in_libs:
                         found_in_libs.append(s_item["lib"])
+                    if guid_match: break # Match definitivo
             
             # 4. Obtener nota de TMDB (Siempre se intenta, haya servidor o no)
             tmdb_score = "N/A"
