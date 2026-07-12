@@ -66,3 +66,41 @@ class PlexAPI:
             root = ET.fromstring(resp.content)
             return root.findall(".//Video") or root.findall(".//Directory")
         return []
+
+    def get_library_items_since(self, library, since_ts, page_size=50):
+        """Fetches only items added at or after ``since_ts`` (epoch seconds).
+
+        Walks the section paginated and sorted by ``addedAt`` descending, and
+        stops early as soon as it reaches items older than ``since_ts`` — así no
+        descarga la librería entera, solo lo nuevo.
+        """
+        items = []
+        start = 0
+        base = f"{library['address']}/library/sections/{library['key']}/all"
+        while True:
+            url = (
+                f"{base}?sort=addedAt:desc&X-Plex-Token={library['token']}"
+                f"&X-Plex-Container-Start={start}&X-Plex-Container-Size={page_size}"
+            )
+            resp = requests.get(url, timeout=20, verify=False)
+            if resp.status_code != 200:
+                break
+
+            root = ET.fromstring(resp.content)
+            batch = root.findall(".//Video") or root.findall(".//Directory")
+            if not batch:
+                break
+
+            reached_old = False
+            for el in batch:
+                if int(el.get("addedAt", 0) or 0) >= since_ts:
+                    items.append(el)
+                else:
+                    reached_old = True
+                    break
+
+            if reached_old or len(batch) < page_size:
+                break
+            start += page_size
+
+        return items

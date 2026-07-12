@@ -31,10 +31,41 @@ Necesitas configurar las siguientes variables en tu host cloud (Render/Railway):
 4. Añade las variables de entorno en la sección "Environment".
 
 ## 🖥️ Uso Local
-1. Instala dependencias: `pip install -r requirements.txt`
-2. Crea un archivo `.env` con tus credenciales.
-3. Ejecuta: `python app.py`
-4. Abre `http://localhost:5000`
+1. Crea y activa un entorno virtual:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+2. Instala dependencias: `pip install -r requirements.txt`
+3. Copia `.env.example` a `.env` y rellena tus credenciales.
+4. Ejecuta: `python app.py`
+5. Abre `http://localhost:5000`
+
+### Variables opcionales
+- `SYNC_INTERVAL_HOURS`: cada cuántas horas sincroniza (por defecto `24`).
+- `FULL_SYNC_INTERVAL_DAYS`: cada cuántos días se hace una reconciliación completa
+  (por defecto `7`). Entre medias, las syncs son incrementales.
+- `RUN_SCHEDULER`: `1` (por defecto) activa el scheduler interno. Ponlo a `0` si
+  despliegas con varios workers de gunicorn (evita sincronizaciones duplicadas) y
+  mueves la sync a un cron externo.
+
+### Modos de sincronización
+- **Incremental** (por defecto): solo pide al servidor las altas desde el último
+  sync exitoso. Rápido y con poca huella en el servidor.
+- **Completa**: escanea todas las librerías y recalcula la disponibilidad. Se
+  ejecuta automáticamente cada `FULL_SYNC_INTERVAL_DAYS`, en el primer sync, o
+  bajo demanda con `GET /api/sync?full=1`. Corrige los puntos ciegos del
+  incremental (bajas del servidor y elementos ya presentes de antes).
+
+## 🗂️ Estructura
+- `app.py` — app Flask (rutas + arranque del scheduler), deliberadamente fino.
+- `config.py` — configuración desde variables de entorno.
+- `db.py` — conexión a MongoDB y colecciones.
+- `sync.py` — orquestación de la sincronización Plex → Mongo.
+- `matching.py` — cruce watchlist ↔ servidor (función pura, testeable).
+- `tmdb.py` — nota media de TMDB.
+- `notifications.py` — avisos por Telegram.
+- `plex_api.py` — cliente HTTP de la API de Plex.
 
 ---
 *Hecho con ❤️ para organizar tu cine.*

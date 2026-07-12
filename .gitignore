@@ -10,3 +10,7 @@ ENV/
 *.log
 .vscode/
 .idea/
+
+# Herramientas locales
+.codegraph/
+.atl/
