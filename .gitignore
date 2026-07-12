@@ -14,3 +14,4 @@ ENV/
 # Herramientas locales
 .codegraph/
 .atl/
+.pytest_cache/

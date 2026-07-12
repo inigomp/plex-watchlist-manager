@@ -57,6 +57,14 @@ Necesitas configurar las siguientes variables en tu host cloud (Render/Railway):
   bajo demanda con `GET /api/sync?full=1`. Corrige los puntos ciegos del
   incremental (bajas del servidor y elementos ya presentes de antes).
 
+## 🧪 Tests
+```powershell
+pip install -r requirements-dev.txt
+pytest
+```
+Cubren la lógica pura: el cruce watchlist ↔ servidor (`matching.py`) y la lógica
+incremental de sync (modo, merge y construcción de items). No tocan red ni Mongo.
+
 ## 🗂️ Estructura
 - `app.py` — app Flask (rutas + arranque del scheduler), deliberadamente fino.
 - `config.py` — configuración desde variables de entorno.
