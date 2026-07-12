@@ -29,6 +29,8 @@ SYNC_INTERVAL_HOURS = int(os.getenv("SYNC_INTERVAL_HOURS", 24))
 # La reconciliación corrige los puntos ciegos del incremental: bajas del servidor
 # y elementos de la watchlist que ya estaban en el servidor de antes.
 FULL_SYNC_INTERVAL_DAYS = int(os.getenv("FULL_SYNC_INTERVAL_DAYS", 7))
-# Permite desactivar el scheduler (p. ej. si se escala a varios workers de gunicorn
-# y la sync se mueve a un cron externo). Por defecto activado.
-RUN_SCHEDULER = os.getenv("RUN_SCHEDULER", "1") == "1"
+# Scheduler interno (hilo APScheduler dentro del proceso). Desactivado por defecto:
+# en Render free el proceso se duerme y el hilo muere, así que la sync se dispara
+# desde un cron externo que golpea /api/sync. Ponlo a "1" solo en un host
+# persistente (VPS, Render de pago, local) donde el proceso no muere.
+RUN_SCHEDULER = os.getenv("RUN_SCHEDULER", "0") == "1"
