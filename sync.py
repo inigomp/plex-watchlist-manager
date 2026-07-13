@@ -266,4 +266,9 @@ def _save_status(status, full=False, error=None):
         doc["last_success_timestamp"] = now
         if full:
             doc["last_full_timestamp"] = now
-    status_col.update_one({"id": "last_sync"}, {"$set": doc}, upsert=True)
+    update = {"$set": doc}
+    if error is None:
+        # Limpia el error de un fallo anterior. Con solo $set, el campo quedaría
+        # pegado para siempre junto a un status:success posterior.
+        update["$unset"] = {"error": ""}
+    status_col.update_one({"id": "last_sync"}, update, upsert=True)
