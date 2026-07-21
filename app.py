@@ -98,10 +98,20 @@ def start_scheduler():
         logger.info("RUN_SCHEDULER=0: scheduler desactivado.")
         return None
 
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(func=sync_watchlist, trigger="interval", hours=config.SYNC_INTERVAL_HOURS)
+    scheduler = BackgroundScheduler(timezone=config.SYNC_TIMEZONE)
+    if config.SYNC_CRON_HOURS:
+        # Horas fijas del día (p. ej. 7,11,15,19,23) en la zona SYNC_TIMEZONE.
+        scheduler.add_job(
+            func=sync_watchlist, trigger="cron",
+            hour=config.SYNC_CRON_HOURS, minute=0,
+        )
+        logger.info(
+            f"Scheduler iniciado (cron a las {config.SYNC_CRON_HOURS}h, {config.SYNC_TIMEZONE})."
+        )
+    else:
+        scheduler.add_job(func=sync_watchlist, trigger="interval", hours=config.SYNC_INTERVAL_HOURS)
+        logger.info(f"Scheduler iniciado (cada {config.SYNC_INTERVAL_HOURS}h).")
     scheduler.start()
-    logger.info(f"Scheduler iniciado (cada {config.SYNC_INTERVAL_HOURS}h).")
     return scheduler
 
 

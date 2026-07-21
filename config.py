@@ -24,6 +24,13 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 # y evita barridos innecesarios de las librerías del servidor.
 SYNC_INTERVAL_HOURS = int(os.getenv("SYNC_INTERVAL_HOURS", 24))
 
+# Horas del día a las que el scheduler lanza el sync (formato cron de APScheduler:
+# lista separada por comas). Si tiene valor, MANDA sobre SYNC_INTERVAL_HOURS y el
+# scheduler dispara a esas horas en punto. Vaciarla ("") vuelve al modo intervalo.
+SYNC_CRON_HOURS = os.getenv("SYNC_CRON_HOURS", "7,11,15,19,23")
+# Zona horaria con la que se interpretan esas horas (gestiona el horario de verano).
+SYNC_TIMEZONE = os.getenv("SYNC_TIMEZONE", "Europe/Madrid")
+
 # Cada cuántos días se hace una reconciliación COMPLETA (escaneo total del
 # servidor). Entre medias, las syncs son incrementales (solo altas nuevas).
 # La reconciliación corrige los puntos ciegos del incremental: bajas del servidor
