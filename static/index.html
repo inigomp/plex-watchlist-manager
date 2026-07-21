@@ -143,6 +143,17 @@
             transform: scale(1.05);
         }
 
+        .sync-btn-full {
+            background: transparent !important;
+            color: var(--primary) !important;
+            border: 1px solid var(--primary) !important;
+        }
+
+        .sync-btn-full:hover {
+            background: rgba(229, 160, 13, 0.15) !important;
+            transform: scale(1.05);
+        }
+
         /* GRID & CARDS */
         .grid {
             display: grid;
@@ -536,6 +547,22 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="full-sync-modal">
+        <div class="modal-content">
+            <div class="modal-title">⚠️ Reconciliación completa</div>
+            <p style="color: var(--text-dim); margin-bottom: 12px;">
+                Esto lanza una sincronización <b>pesada</b>: escanea todas las librerías
+                atacando <b>directamente el servidor de Plex</b>. Úsala solo cuando falte
+                algo que sabes que está en el servidor.
+            </p>
+            <p style="color: var(--text);">¿Seguro que quieres continuar?</p>
+            <div class="modal-btns">
+                <button class="btn btn-cancel" onclick="closeFullSyncModal()">No</button>
+                <button class="btn btn-save" id="confirm-full-sync-btn">Sí, continuar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let fullData = [];
         let currentFilters = {
@@ -630,7 +657,8 @@
                 <div class="stats">
                     <div class="stat-badge">Total: <b>${filtered.length}</b></div>
                     <div class="stat-badge">Disponibles: <span style="color:var(--success)">${filtered.filter(i => i.on_server).length}</span></div>
-                    <button onclick="forceSync()" class="stat-badge sync-btn">🔄 Sincronizar con Plex</button>
+                    <button onclick="forceSync(this)" class="stat-badge sync-btn">🔄 Sincronizar con Plex</button>
+                    <button onclick="openFullSyncModal(this)" class="stat-badge sync-btn sync-btn-full">🔁 Reconciliación completa</button>
                 </div>
             `;
 
@@ -685,17 +713,41 @@
             appDiv.innerHTML = statsHtml + gridHtml;
         }
 
-        async function forceSync() {
+        async function forceSync(btn) {
             if (!confirm("Esta acción actualizará tu lista con Plex y TMDB. ¿Continuar?")) return;
+            runSync(btn, false);
+        }
+
+        // Reconciliación completa: escaneo total del servidor. Al ser una operación
+        // pesada, se confirma con un modal propio en vez del confirm nativo.
+        let fullSyncBtnRef = null;
+
+        function openFullSyncModal(btn) {
+            fullSyncBtnRef = btn;
+            document.getElementById('full-sync-modal').style.display = 'flex';
+        }
+
+        function closeFullSyncModal() {
+            document.getElementById('full-sync-modal').style.display = 'none';
+            fullSyncBtnRef = null;
+        }
+
+        document.getElementById('confirm-full-sync-btn').addEventListener('click', () => {
+            const btn = fullSyncBtnRef;
+            closeFullSyncModal();
+            if (btn) runSync(btn, true);
+        });
+
+        // Lanza la sync (incremental o completa) y refleja el progreso en el botón.
+        async function runSync(btn, full) {
+            const url = full ? '/api/sync?full=1' : '/api/sync';
             try {
                 // 1. Iniciar Sync
-                const response = await fetch('/api/sync', { method: 'POST' });
-                const res = await response.json();
+                await fetch(url, { method: 'POST' });
 
                 // 2. Feedback inicial
-                const btn = document.querySelector('.sync-btn');
                 const originalText = btn.innerHTML;
-                btn.innerHTML = '⏳ Sincronizando...';
+                btn.innerHTML = full ? '⏳ Reconciliando...' : '⏳ Sincronizando...';
                 btn.disabled = true;
 
                 // 3. Polling de estado
@@ -705,16 +757,14 @@
                         const sResp = await fetch('/api/status');
                         const status = await sResp.json();
 
-                        // Si el timestamp del estado es MAYOR que cuando empezamos, es que ha terminado
+                        // Si el timestamp del estado es MAYOR que cuando empezamos, ha terminado.
                         if (status.timestamp > startTime) {
                             clearInterval(interval);
                             btn.innerHTML = originalText;
                             btn.disabled = false;
 
                             if (status.status === 'success') {
-                                // Recarga silenciosa pero notificando
                                 loadWatchlist();
-                                // Pequeña notificación toast si fuera posible, o cambio de texto temporal
                                 const prev = btn.innerHTML;
                                 btn.innerHTML = '✅ ¡Listo!';
                                 setTimeout(() => btn.innerHTML = prev, 2000);
