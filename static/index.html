@@ -455,10 +455,45 @@
             border-radius: 20px;
             color: var(--danger);
         }
+
+        /* LAST-UPDATE PANEL (top-right) */
+        .last-update {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            z-index: 900;
+            text-align: right;
+            font-size: 0.72rem;
+            line-height: 1.6;
+            color: var(--text-dim);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 8px 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .last-update b {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        @media (max-width: 640px) {
+            .last-update {
+                position: static;
+                margin: 0 20px 20px;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <div class="last-update">
+        <div>Última act. incremental: <b id="lu-incremental">—</b></div>
+        <div>Última act. total: <b id="lu-full">—</b></div>
+    </div>
+
     <div class="container">
         <header>
             <h1>Plex Watchlist</h1>
@@ -594,6 +629,14 @@
             });
         });
 
+        // Formatea un timestamp Unix (segundos) a hora local del navegador.
+        function fmtTs(ts) {
+            if (!ts) return '—';
+            return new Date(ts * 1000).toLocaleString('es-ES', {
+                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+            });
+        }
+
         async function checkServerStatus() {
             try {
                 const resp = await fetch('/api/status');
@@ -604,6 +647,8 @@
                 } else {
                     warning.style.display = 'none';
                 }
+                document.getElementById('lu-incremental').textContent = fmtTs(data.last_success_timestamp);
+                document.getElementById('lu-full').textContent = fmtTs(data.last_full_timestamp);
             } catch (e) { console.error(e); }
         }
 
