@@ -199,6 +199,15 @@
             gap: clamp(14px, 3vw, 30px);
         }
 
+        /* En pantallas anchas (tablet/PC) volvemos a las tarjetas grandes de
+           antes: columnas de 280px => póster de 420px (aspect-ratio 2/3) y
+           títulos con sitio de sobra. El móvil se queda con los 150px. */
+        @media (min-width: 640px) {
+            .grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            }
+        }
+
         .card {
             background: var(--card-bg);
             border-radius: clamp(16px, 3vw, 24px);
